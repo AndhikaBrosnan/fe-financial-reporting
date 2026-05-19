@@ -1,11 +1,55 @@
-import { Box, Button, Divider, Flex, Heading, Text } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  Flex,
+  HStack,
+  SimpleGrid,
+  Text,
+} from "@chakra-ui/react";
 import { isEmpty } from "lodash";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import HeaderLayout from "../../common/components/headers";
-import { isMobileHandler } from "../../common/helpers/responsive";
+import PageShell from "../../common/components/PageShell";
+import SectionTitle from "../../common/components/SectionTitle";
+import StatCard from "../../common/components/StatCard";
 import { supabase } from "../../common/helpers/supabaseClient";
-import styles from "./styles.module.css";
+
+const FILTER_OPTIONS = [
+  { id: "all", label: "Semua" },
+  { id: "this_month", label: "Bulan ini" },
+  { id: "month_before", label: "Bulan lalu" },
+];
+
+const FilterPills = ({ value, onChange }) => (
+  <HStack
+    spacing={2}
+    overflowX="auto"
+    className="no-scrollbar"
+    py={1}
+    pr={1}
+    flexShrink={0}
+  >
+    {FILTER_OPTIONS.map((opt) => {
+      const active = value === opt.id;
+      return (
+        <Button
+          key={opt.id}
+          size="sm"
+          flexShrink={0}
+          onClick={() => onChange(opt.id)}
+          variant={active ? "solid" : "ghostOnSurface"}
+          borderRadius="pill"
+          px={4}
+        >
+          {opt.label}
+        </Button>
+      );
+    })}
+  </HStack>
+);
+
+const formatRp = (n) =>
+  `Rp ${new Intl.NumberFormat("id-ID").format(Math.abs(n || 0))}`;
 
 const ProfitLoss = () => {
   const router = useRouter();
@@ -14,12 +58,7 @@ const ProfitLoss = () => {
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalOutcome, setTotalOutcome] = useState(0);
   const [monthFilter, setMonthFilter] = useState("all");
-
   const [totalProfit, setTotalProfit] = useState(0);
-
-  const formatter = new Intl.NumberFormat("id-ID");
-
-  console.log("[debug] transaksi: ", transaksi);
 
   const fetchDatabase = async () => {
     let { data } = await supabase
@@ -30,8 +69,6 @@ const ProfitLoss = () => {
     if (isEmpty(data)) return;
 
     const currentDate = new Date();
-    console.log("[debug] monthFilter: ", monthFilter);
-    console.log("[debug] currentDate: ", currentDate.getMonth());
 
     switch (monthFilter) {
       case "all":
@@ -57,7 +94,6 @@ const ProfitLoss = () => {
           return (
             (transactionDate.getMonth() === prevMonth &&
               transactionDate.getFullYear() === currentDate.getFullYear()) ||
-            // Handle the case where the transaction is in December of the previous year
             (prevMonth === 11 &&
               transactionDate.getMonth() === 0 &&
               transactionDate.getFullYear() === currentDate.getFullYear() - 1)
@@ -77,8 +113,6 @@ const ProfitLoss = () => {
   }, [monthFilter]);
 
   useEffect(() => {
-    // if (!isEmpty(transaksi)) {
-    // sum income
     const sumIncome = transaksi.reduce(function (sum, value) {
       if (value.type === "income") {
         return sum + parseInt(value.nominal);
@@ -87,7 +121,6 @@ const ProfitLoss = () => {
     }, 0);
     setTotalIncome(sumIncome);
 
-    // sum outcome
     const sumOutcome = transaksi.reduce(function (sum, value) {
       if (value.type === "outcome") {
         return sum + parseInt(value.nominal);
@@ -95,7 +128,6 @@ const ProfitLoss = () => {
       return sum;
     }, 0);
     setTotalOutcome(sumOutcome);
-    // }
   }, [transaksi]);
 
   useEffect(() => {
@@ -106,179 +138,87 @@ const ProfitLoss = () => {
     setMonthFilter(value);
   };
 
-  if (router.pathname === "/") {
-    return (
-      <>
-        <Flex justifyContent="center" alignItems="center" pt="1em">
-          <Heading className={styles["title-laporan-keuangan"]} as="h2">
-            Laporan Keuangan
-          </Heading>
-        </Flex>
-        <Box m="1em 0">
-          <Flex
-            justifyContent="flex-start"
-            alignItems="center"
-            pt="1em"
-            overflowX="auto"
-          >
-            <Button
-              className="rounded-full mx-px"
-              colorScheme="teal"
-              variant={monthFilter === "all" ? "solid" : "outline"}
-              onClick={() => onClickFilterWaktu("all")}
-            >
-              Semua
-            </Button>
-            <Button
-              className="rounded-full mx-px"
-              colorScheme="teal"
-              variant={monthFilter === "this_month" ? "solid" : "outline"}
-              onClick={() => onClickFilterWaktu("this_month")}
-            >
-              Bulan ini
-            </Button>
-            <Button
-              className="rounded-full mx-px"
-              colorScheme="teal"
-              variant={monthFilter === "month_before" ? "solid" : "outline"}
-              onClick={() => onClickFilterWaktu("month_before")}
-            >
-              Bulan lalu
-            </Button>
-          </Flex>
-        </Box>
-        <Box mt="1em" m="2em">
-          <Flex justifyContent="center" alignItems="center">
-            <Box>
-              <Text color="green">Pemasukan</Text>
-            </Box>
-            <Box ml={3}>
-              <Text color="green">Rp {formatter.format(totalIncome)}</Text>
-            </Box>
-          </Flex>
+  const profitTone = totalProfit >= 0 ? "profit" : "expense";
+  const profitPrefix = totalProfit < 0 ? "- " : "";
 
-          <Flex m="1em 2em" justifyContent="center" alignItems="center">
-            <Box>
-              <Text color="red">Pengeluaran</Text>
-            </Box>
-            <Box ml={3}>
-              <Text color="red">Rp {formatter.format(totalOutcome)}</Text>
-            </Box>
-          </Flex>
+  // When rendered as a child on the home page, omit the page shell/header.
+  const isEmbedded = router.pathname === "/";
 
-          <Divider borderWidth="2px" />
-          <Flex m="1em 2em" justifyContent="center" alignItems="center">
-            <Box>
-              <Text color={totalProfit > 0 ? "green" : "red"}>Keuntungan</Text>
-            </Box>
-            <Box ml={3}>
-              <Text color={totalProfit > 0 ? "green" : "red"}>
-                {totalProfit < 0 && "-"} Rp{" "}
-                {formatter.format(Math.abs(totalProfit))}
-              </Text>
-            </Box>
-          </Flex>
-          <Divider borderWidth="2px" />
+  const summary = (
+    <>
+      <Flex
+        align={{ base: "stretch", md: "center" }}
+        justify="space-between"
+        direction={{ base: "column", md: "row" }}
+        gap={3}
+        mb={4}
+      >
+        <Box>
+          <Text textStyle="label" mb={1}>
+            Periode
+          </Text>
+          <Text textStyle="sectionTitle" lineHeight={1.2}>
+            Saldo bersih
+          </Text>
         </Box>
-      </>
-    );
+        <FilterPills value={monthFilter} onChange={onClickFilterWaktu} />
+      </Flex>
+
+      <SimpleGrid columns={{ base: 1, md: 3 }} spacing={{ base: 3, md: 4 }}>
+        <StatCard
+          tone="income"
+          label="Pemasukan"
+          amount={formatRp(totalIncome)}
+          hint={`${transaksi.filter((t) => t.type === "income").length} transaksi`}
+        />
+        <StatCard
+          tone="expense"
+          label="Pengeluaran"
+          amount={formatRp(totalOutcome)}
+          hint={`${transaksi.filter((t) => t.type === "outcome").length} transaksi`}
+        />
+        <StatCard
+          tone={profitTone}
+          label="Keuntungan"
+          amount={`${profitPrefix}${formatRp(totalProfit)}`}
+          hint={
+            totalProfit >= 0 ? "Laba bersih periode ini" : "Rugi periode ini"
+          }
+        />
+      </SimpleGrid>
+    </>
+  );
+
+  if (isEmbedded) {
+    return summary;
   }
 
   return (
-    <ParentComponentProfitLoss
-      transaksi={transaksi}
-      setTransaksi={setTransaksi}
-    >
-      <Flex justifyContent="center" alignItems="center" pt="1em">
-        <Heading className={styles["title-laporan-keuangan"]} as="h2">
-          Laporan Keuangan
-        </Heading>
-      </Flex>
-      <Box m="1em 0">
-        <Flex
-          justifyContent="flex-start"
-          alignItems="center"
-          pt="1em"
-          overflowX="auto"
-        >
-          <Button
-            className="rounded-full mx-px"
-            colorScheme="teal"
-            variant={monthFilter === "all" ? "solid" : "outline"}
-            onClick={() => onClickFilterWaktu("all")}
-          >
-            Semua
-          </Button>
-          <Button
-            className="rounded-full mx-px"
-            colorScheme="teal"
-            variant={monthFilter === "this_month" ? "solid" : "outline"}
-            onClick={() => onClickFilterWaktu("this_month")}
-          >
-            Bulan ini
-          </Button>
-          <Button
-            className="rounded-full mx-px"
-            colorScheme="teal"
-            variant={monthFilter === "month_before" ? "solid" : "outline"}
-            onClick={() => onClickFilterWaktu("month_before")}
-          >
-            Bulan lalu
-          </Button>
-        </Flex>
-      </Box>
-      <Box mt="1em" m="2em">
-        <Flex justifyContent="center" alignItems="center">
-          <Box>
-            <Text color="green">Pemasukan</Text>
-          </Box>
-          <Box ml={3}>
-            <Text color="green">Rp {formatter.format(totalIncome)}</Text>
-          </Box>
-        </Flex>
+    <PageShell>
+      <SectionTitle
+        eyebrow="Laporan Keuangan"
+        title="Performa periode terpilih"
+        mt={2}
+        mb={4}
+      />
 
-        <Flex m="1em 2em" justifyContent="center" alignItems="center">
-          <Box>
-            <Text color="red">Pengeluaran</Text>
-          </Box>
-          <Box ml={3}>
-            <Text color="red">Rp {formatter.format(totalOutcome)}</Text>
-          </Box>
-        </Flex>
-
-        <Divider borderWidth="2px" />
-        <Flex m="1em 2em" justifyContent="center" alignItems="center">
-          <Box>
-            <Text color={totalProfit > 0 ? "green" : "red"}>Keuntungan</Text>
-          </Box>
-          <Box ml={3}>
-            <Text color={totalProfit > 0 ? "green" : "red"}>
-              {totalProfit < 0 && "-"} Rp{" "}
-              {formatter.format(Math.abs(totalProfit))}
-            </Text>
-          </Box>
-        </Flex>
-        <Divider borderWidth="2px" />
+      <Box layerStyle="cardElevated" p={{ base: 4, md: 6 }}>
+        {summary}
       </Box>
-    </ParentComponentProfitLoss>
+
+      <ProfitLossInsight transaksi={transaksi} />
+    </PageShell>
   );
 };
 
-const ParentComponentProfitLoss = (props) => {
-  const isMobile = isMobileHandler();
+const ProfitLossInsight = ({ transaksi }) => {
   const formatter = new Intl.NumberFormat("id-ID");
-
   const [outcomes, setOutcomes] = useState();
   const [biggestOutcome, setBiggestOutcome] = useState();
-  const { transaksi } = props;
 
   useEffect(() => {
     if (isEmpty(transaksi)) return;
-
-    const filteredOutcome = transaksi.filter((item) => {
-      return item.type === "outcome";
-    });
-
+    const filteredOutcome = transaksi.filter((item) => item.type === "outcome");
     setOutcomes(filteredOutcome);
   }, [transaksi]);
 
@@ -291,33 +231,49 @@ const ParentComponentProfitLoss = (props) => {
     setBiggestOutcome(max);
   }, [outcomes]);
 
-  return (
-    <Box p={!isMobile && "0 30em"}>
-      <HeaderLayout />
-      {props.children}
+  if (isEmpty(biggestOutcome)) return null;
 
-      {!isEmpty(biggestOutcome) && (
-        <Flex
-          m="2em 0"
-          justifyContent="center"
-          alignItems="center"
-          flexDirection="column"
-        >
+  return (
+    <>
+      <SectionTitle eyebrow="Insight" title="Saran Keuangan" />
+      <Box
+        layerStyle="cardElevated"
+        p={{ base: 4, md: 6 }}
+        bgGradient="linear(135deg, brand.50 0%, white 100%)"
+        borderColor="brand.100"
+      >
+        <Flex align="flex-start" gap={4}>
+          <Flex
+            align="center"
+            justify="center"
+            boxSize="44px"
+            borderRadius="full"
+            bg="brand.500"
+            color="white"
+            fontSize="xl"
+            fontWeight={700}
+            flexShrink={0}
+          >
+            !
+          </Flex>
           <Box>
-            <Heading as="h1" size="md" fontWeight="bold">
-              Saran Keuangan
-            </Heading>
-          </Box>
-          <Box ml={3} mt={2}>
-            <Text>
-              <span style={{ fontWeight: 500 }}>{biggestOutcome.name}</span>{" "}
-              merupakan beban pengeluaran terbesar dengan pengeluaran sebesar Rp{" "}
-              {formatter.format(biggestOutcome.nominal)}
+            <Text fontWeight={600} color="ink.900" mb={1}>
+              Pengeluaran terbesar
+            </Text>
+            <Text color="ink.700" lineHeight={1.6}>
+              <Text as="span" fontWeight={600} color="ink.900">
+                {biggestOutcome.name}
+              </Text>{" "}
+              merupakan beban pengeluaran terbesar sebesar{" "}
+              <Text as="span" fontWeight={600} color="expense.500">
+                Rp {formatter.format(biggestOutcome.nominal)}
+              </Text>
+              . Pertimbangkan untuk meninjau ulang pos pengeluaran ini.
             </Text>
           </Box>
         </Flex>
-      )}
-    </Box>
+      </Box>
+    </>
   );
 };
 

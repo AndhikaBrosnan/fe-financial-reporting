@@ -1,50 +1,83 @@
 import { ArrowBackIcon } from "@chakra-ui/icons";
-import { Box, Flex, IconButton, Image, Text } from "@chakra-ui/react";
+import { Box, Container, Flex, IconButton, Text } from "@chakra-ui/react";
 import { useRouter } from "next/router";
-import { Fragment } from "react";
-import { isMiniMobileHandler } from "../helpers/responsive";
 import { LogoTitle } from "./icons";
-import styles from "./styles.module.css";
 
-const HeaderLayout = (props) => {
-  const { title } = props;
-  const isMobile = isMiniMobileHandler();
+const ROUTE_TITLES = {
+  "/": "Catat Uang",
+  "/financial-records": "Jurnal Umum",
+  "/profit-loss": "Laporan Keuangan",
+  "/reports": "Catat Transaksi",
+};
+
+const HeaderLayout = ({ title }) => {
   const router = useRouter();
+  const isHome = router.pathname === "/";
+  const computedTitle = title || ROUTE_TITLES[router.pathname] || "Catat Uang";
 
   return (
-    <Flex
-      p="0 8px 4px"
-      w="100%"
-      justifyContent="flex-start"
-      alignItems="center"
-      background="#018062"
-      boxShadow={"0px 4px 4px rgba(0, 0, 0, 0.25)"}
-      h="fit-content"
+    <Box
+      as="header"
+      bgGradient="linear(135deg, brand.500 0%, brand.700 100%)"
+      color="white"
+      position="sticky"
+      top={0}
+      zIndex={20}
+      boxShadow="0 4px 20px rgba(13, 61, 49, 0.18)"
     >
-      <Flex justifyContent="flex-start" alignItems="center">
-        {isMobile && router.asPath !== "/" ? (
-          <IconButton
-            p={"1em 1em 0.5em"}
-            onClick={() => router.push("/")}
-            variant="link"
-            size="24px"
-            color="white"
-            aria-label="Back"
-            icon={<ArrowBackIcon />}
-          />
-        ) : (
-          <>
-            <LogoTitle onClick={() => router.push("/")} cursor="pointer" />
-          </>
-        )}
-        {router.asPath === "/" && (
-          <Text className={styles["title-headers"]} color="white">
-            Catat Uang
-          </Text>
-        )}
-      </Flex>
-      <Box ml={"2em"}>{title}</Box>
-    </Flex>
+      <Container maxW="780px" px={{ base: 4, md: 6 }} py={3}>
+        <Flex align="center" gap={3}>
+          {!isHome ? (
+            <IconButton
+              aria-label="Kembali"
+              variant="ghost"
+              colorScheme="whiteAlpha"
+              icon={<ArrowBackIcon boxSize={5} />}
+              onClick={() => router.back()}
+              borderRadius="full"
+              color="white"
+              _hover={{ bg: "whiteAlpha.200" }}
+            />
+          ) : (
+            <Flex
+              align="center"
+              justify="center"
+              boxSize="40px"
+              borderRadius="full"
+              bg="whiteAlpha.200"
+              cursor="pointer"
+              onClick={() => router.push("/")}
+            >
+              <Box w="60%" h="60%">
+                <LogoTitle style={{ width: "100%", height: "100%" }} />
+              </Box>
+            </Flex>
+          )}
+
+          <Box flex="1" minW={0}>
+            <Text
+              fontSize="xs"
+              opacity={0.8}
+              fontWeight={500}
+              letterSpacing="0.06em"
+              textTransform="uppercase"
+              lineHeight={1}
+            >
+              {isHome ? "Aplikasi" : "Halaman"}
+            </Text>
+            <Text
+              fontSize={{ base: "lg", md: "xl" }}
+              fontWeight={700}
+              letterSpacing="-0.01em"
+              lineHeight={1.2}
+              noOfLines={1}
+            >
+              {computedTitle}
+            </Text>
+          </Box>
+        </Flex>
+      </Container>
+    </Box>
   );
 };
 

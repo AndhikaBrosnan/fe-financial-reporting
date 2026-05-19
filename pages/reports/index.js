@@ -1,20 +1,50 @@
-import { Box, Divider, Flex, Text } from "@chakra-ui/react";
-import {
-  isMiniMobileHandler,
-  isMobileHandler,
-} from "../../common/helpers/responsive";
+import { Box, Button, Flex, Text } from "@chakra-ui/react";
 import "react-datepicker/dist/react-datepicker.css";
-import styles from "./styles.module.css";
-
 import IncomeComponent from "./components/income";
-import { useEffect, useState } from "react";
 import OutcomeComponent from "./components/outcome";
-import HeaderLayout from "../../common/components/headers";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import PageShell from "../../common/components/PageShell";
+import SectionTitle from "../../common/components/SectionTitle";
 import { supabase } from "../../common/helpers/supabaseClient";
 
+const SegmentToggle = ({ isIncome, onChange }) => (
+  <Flex
+    p={1}
+    bg="surface.muted"
+    borderRadius="pill"
+    gap={1}
+    border="1px solid"
+    borderColor="surface.border"
+  >
+    {[
+      { id: true, label: "Uang Masuk", color: "income.500" },
+      { id: false, label: "Uang Keluar", color: "expense.500" },
+    ].map((seg) => {
+      const active = isIncome === seg.id;
+      return (
+        <Button
+          key={String(seg.id)}
+          flex="1"
+          size="md"
+          borderRadius="pill"
+          fontWeight={600}
+          variant="unstyled"
+          onClick={() => onChange(seg.id)}
+          bg={active ? "white" : "transparent"}
+          color={active ? seg.color : "ink.500"}
+          boxShadow={active ? "soft" : "none"}
+          transition="all 0.15s ease"
+          _hover={{ color: active ? seg.color : "ink.700" }}
+        >
+          {seg.label}
+        </Button>
+      );
+    })}
+  </Flex>
+);
+
 const FinancialReport = () => {
-  const isMobile = isMiniMobileHandler();
   const router = useRouter();
   const { section } = router.query;
 
@@ -23,6 +53,8 @@ const FinancialReport = () => {
   useEffect(() => {
     if (section === "outcome") {
       setIsIncome(false);
+    } else if (section === "income") {
+      setIsIncome(true);
     }
   }, [section]);
 
@@ -39,50 +71,21 @@ const FinancialReport = () => {
   }, []);
 
   return (
-    <>
-      <HeaderLayout />
-      <Box
-        p={isMobile ? "0" : "2em 35em"}
-        h="100vh"
-        border="1px solid #ffffff"
-        borderRadius="4px"
-        background="white"
-      >
-        <Flex
-          justifyContent={isMobile ? "space-between" : "space-around"}
-          alignItems={"center"}
-          w="100%"
-          mt={"1em"}
-        >
-          <Box
-            ml={"3em"}
-            p="1em"
-            background={isIncome ? "#0D3D31" : "#14A281"}
-            borderRadius="63px"
-            cursor="pointer"
-            onClick={() => setIsIncome(true)}
-          >
-            <Text color="white">Uang Masuk</Text>
-          </Box>
-          <Box
-            mr={"3em"}
-            p="1em"
-            background={isIncome ? "#14A281" : "#0D3D31"}
-            borderRadius="63px"
-            cursor="pointer"
-            onClick={() => setIsIncome(false)}
-          >
-            <Text color="white">Uang Keluar</Text>
-          </Box>
-        </Flex>
+    <PageShell>
+      <SectionTitle
+        eyebrow="Catat transaksi"
+        title={isIncome ? "Pemasukan baru" : "Pengeluaran baru"}
+        mt={2}
+        mb={4}
+      />
 
-        <Divider border="2px solid #808080" mt={"2em"} />
+      <SegmentToggle isIncome={isIncome} onChange={setIsIncome} />
 
+      <Box layerStyle="cardElevated" mt={4} p={{ base: 4, md: 6 }}>
         {isIncome ? <IncomeComponent /> : <OutcomeComponent />}
       </Box>
-    </>
+    </PageShell>
   );
-  return <></>;
 };
 
 export default FinancialReport;

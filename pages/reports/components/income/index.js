@@ -1,27 +1,55 @@
 import {
   Box,
+  Button,
   Divider,
   Flex,
   FormControl,
-  Button,
   FormLabel,
-  Heading,
-  Input,
   Text,
   useToast,
-  InputGroup,
-  InputLeftAddon,
+  VStack,
 } from "@chakra-ui/react";
+import { ArrowDownIcon } from "@chakra-ui/icons";
+import { Input } from "@chakra-ui/react";
 import CreatableSelect from "react-select/creatable";
-import styles from "./styles.module.css";
-
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { useEffect, useState } from "react";
-import { isMiniMobileHandler } from "../../../../common/helpers/responsive";
-import { isEmpty, set } from "lodash";
+import { isEmpty } from "lodash";
 import CurrencyInput from "react-currency-input-field";
+import { isMiniMobileHandler } from "../../../../common/helpers/responsive";
 import { supabase } from "../../../../common/helpers/supabaseClient";
+
+const selectStyles = {
+  control: (base, state) => ({
+    ...base,
+    minHeight: 40,
+    borderRadius: 12,
+    background: state.isFocused ? "#fff" : "#EEF2F0",
+    borderColor: state.isFocused ? "#2EAE82" : "transparent",
+    boxShadow: state.isFocused ? "0 0 0 3px rgba(46, 174, 130, 0.15)" : "none",
+    "&:hover": { borderColor: "#E6ECE9" },
+  }),
+  valueContainer: (base) => ({ ...base, padding: "0 10px" }),
+  placeholder: (base) => ({ ...base, color: "#637773" }),
+  menu: (base) => ({
+    ...base,
+    borderRadius: 12,
+    overflow: "hidden",
+    boxShadow: "0 12px 32px rgba(15, 60, 50, 0.12)",
+    border: "1px solid #E6ECE9",
+  }),
+  option: (base, state) => ({
+    ...base,
+    background: state.isSelected
+      ? "#018062"
+      : state.isFocused
+        ? "#E6F7F1"
+        : "#fff",
+    color: state.isSelected ? "#fff" : "#0F1A16",
+    cursor: "pointer",
+  }),
+};
 
 const IncomeComponent = () => {
   const formatter = new Intl.NumberFormat("id-ID");
@@ -40,7 +68,12 @@ const IncomeComponent = () => {
   useEffect(() => {
     const savedTransactions = localStorage.getItem("transactions");
     if (savedTransactions) {
-      setTransactions(JSON.parse(savedTransactions));
+      try {
+        const parsed = JSON.parse(savedTransactions);
+        setTransactions(Array.isArray(parsed) ? parsed : []);
+      } catch {
+        setTransactions([]);
+      }
     }
   }, []);
 
@@ -54,6 +87,11 @@ const IncomeComponent = () => {
   ];
 
   useEffect(() => {
+    if (!Array.isArray(transactions)) {
+      setTotalIncome(0);
+      return;
+    }
+
     const calculateIncome = transactions.reduce((accumulator, currentValue) => {
       if (currentValue.type === "income")
         return accumulator + parseInt(currentValue.nominal);
@@ -95,7 +133,7 @@ const IncomeComponent = () => {
 
     toast({
       title: "Transaksi berhasil ditambahkan.",
-      description: "Pengeluaran telah dicatat.",
+      description: "Pemasukan telah dicatat.",
       status: "success",
       duration: 3000,
       position: isMobile ? "bottom" : "top",
@@ -144,73 +182,109 @@ const IncomeComponent = () => {
   };
 
   return (
-    <>
-      <Box m={"0 1em"}>
-        <Heading as="h4" size="md">
-          Input Pemasukan
-        </Heading>
-        <FormControl m={"1em 0"} isRequired>
-          <FormLabel>Jenis Transaksi</FormLabel>
+    <Box>
+      <VStack spacing={ 4 } align="stretch">
+        <FormControl isRequired>
+          <FormLabel>Jenis transaksi</FormLabel>
           <CreatableSelect
             isClearable
-            options={options}
-            value={jenisTransaksi}
-            onChange={(item) => setJenisTransaksi(item)}
+            options={ options }
+            value={ jenisTransaksi }
+            onChange={ (item) => setJenisTransaksi(item) }
+            placeholder="Pilih atau ketik jenis transaksi"
+            styles={ selectStyles }
           />
         </FormControl>
-        <FormControl m={"1em 0"} isRequired>
+
+        <FormControl isRequired>
           <FormLabel>Keterangan</FormLabel>
           <Input
             type="text"
-            placeholder="Masukan nama Transaksi"
-            value={namaTransaksi}
-            onChange={(e) => setNamaTransaksi(e.target.value)}
+            placeholder="Misal: Penjualan 12 pcs kaos"
+            value={ namaTransaksi }
+            onChange={ (e) => setNamaTransaksi(e.target.value) }
           />
         </FormControl>
-        <FormControl m={"1em 0"} isRequired>
-          <FormLabel>Jumlah Transaksi</FormLabel>
-          <InputGroup>
-            <CurrencyInput
-              className="w3-input w3-border w3-round-large"
-              value={nominalTransaksi}
-              onValueChange={handleChangeNominal}
-              intlConfig={{ locale: "id-ID", currency: "IDR" }}
-            />
-          </InputGroup>
-        </FormControl>
-        <FormControl m={"1em 0"}>
-          <FormLabel>Tanggal Transaksi</FormLabel>
-        </FormControl>
-        <DatePicker
-          className={styles["datepicker-input"]}
-          placeholderText="Date Picker"
-          selected={tanggalTransaksi}
-          onChange={(date) => setTanggalTransaksi(date.getTime())}
-        />
-      </Box>
-      <Divider border="1px solid #000000" mt={"2em"} />
-      <Box m={"0 1em"}>
-        <Heading as="h4" size="md">
-          Total Pemasukan saat ini: <span></span>
-        </Heading>
-        <Heading as="h5" size="md" fontWeight="bold">
-          Rp{formatter.format(totalIncome)}
-        </Heading>
 
-        <Box mt={"2em"}>
-          <Flex justifyContent="center" alignItems="center">
-            <Button
-              colorScheme="teal"
-              size="lg"
-              borderRadius="28px"
-              onClick={onSubmitIncome}
-            >
-              Submit Pemasukan
-            </Button>
-          </Flex>
+        <FormControl isRequired>
+          <FormLabel>Jumlah transaksi</FormLabel>
+          <CurrencyInput
+            className="currency-input"
+            value={ nominalTransaksi }
+            onValueChange={ handleChangeNominal }
+            placeholder="Rp 0"
+            intlConfig={ { locale: "id-ID", currency: "IDR" } }
+          />
+        </FormControl>
+
+        <FormControl>
+          <FormLabel>Tanggal transaksi</FormLabel>
+          <DatePicker
+            className="datepicker-input"
+            placeholderText="Pilih tanggal"
+            dateFormat="dd MMMM yyyy"
+            selected={ tanggalTransaksi }
+            onChange={ (date) => setTanggalTransaksi(date.getTime()) }
+          />
+        </FormControl>
+      </VStack>
+
+      <Divider my={ 6 } borderColor="surface.border" />
+
+      <Flex
+        align="center"
+        justify="space-between"
+        gap={ 3 }
+        bg="income.50"
+        borderRadius="lg"
+        px={ { base: 4, md: 5 } }
+        py={ 4 }
+      >
+        <Box>
+          <Text
+            fontSize="xs"
+            fontWeight={ 600 }
+            letterSpacing="0.08em"
+            textTransform="uppercase"
+            color="income.600"
+          >
+            Total pemasukan saat ini
+          </Text>
+          <Text
+            mt={ 1 }
+            fontSize={ { base: "xl", md: "2xl" } }
+            fontWeight={ 800 }
+            color="income.600"
+            fontVariantNumeric="tabular-nums"
+          >
+            Rp { formatter.format(totalIncome) }
+          </Text>
         </Box>
-      </Box>
-    </>
+        <Flex
+          align="center"
+          justify="center"
+          boxSize="44px"
+          borderRadius="full"
+          bg="white"
+          color="income.500"
+          flexShrink={ 0 }
+        >
+          <ArrowDownIcon boxSize={ 5 } />
+        </Flex>
+      </Flex>
+
+      <Button
+        mt={ 6 }
+        size="lg"
+        w="100%"
+        onClick={ onSubmitIncome }
+        bgGradient="linear(135deg, #13A981 0%, #018062 100%)"
+        color="white"
+        _hover={ { bgGradient: "linear(135deg, #0E8F6D 0%, #016A52 100%)" } }
+      >
+        Submit Pemasukan
+      </Button>
+    </Box>
   );
 };
 
